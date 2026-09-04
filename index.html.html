@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle do Estoque com Edição Completa</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --warning: #d97706;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --border: #e2e8f0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            color: #0f172a;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            padding: 18px;
+            border-radius: 10px;
+            border-left: 4px solid var(--primary);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .stat-card.qty { border-left-color: #eab308; }
+        .stat-card.val { border-left-color: var(--success); }
+
+        .stat-card h3 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            color: #64748b;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .number {
+            font-size: 1.4rem;
+            font-weight: bold;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        input[type="text"], input[type="number"] {
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            outline: none;
+            font-size: 0.95rem;
+        }
+
+        input[type="text"] {
+            flex: 1;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+        .btn-outline:hover { background: #f1f5f9; }
+        .btn-danger { background: #fee2e2; color: var(--danger); }
+        .btn-danger:hover { background: #fca5a5; }
+
+        .table-container {
+            background: var(--card-bg);
+            border-radius: 12px;
+            overflow-x: auto;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.95rem;
+        }
+
+        th, td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background: #f8fafc;
+            color: #475569;
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background: #f1f5f9;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            background: #e2e8f0;
+            color: #334155;
+        }
+
+        .badge-zero { background: #fee2e2; color: var(--danger); }
+
+        .actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 0.85rem;
+            border-radius: 4px;
+        }
+
+        .btn-add { background: #dcfce7; color: var(--success); border: 1px solid #bbf7d0; }
+        .btn-add:hover { background: #86efac; }
+        .btn-sub { background: #fee2e2; color: var(--danger); border: 1px solid #fecaca; }
+        .btn-sub:hover { background: #fca5a5; }
+        .btn-edit { background: #fef3c7; color: var(--warning); border: 1px solid #fde68a; }
+        .btn-edit:hover { background: #fcd34d; }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            width: 100%;
+            max-width: 480px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .status-saved {
+            color: var(--success);
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div>
+            <h1>📦 Controle de Estoque</h1>
+            <span class="status-saved">● Salvamento automático ativo</span>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button class="btn btn-primary" onclick="openModal()">+ Novo Produto</button>
+            <button class="btn btn-outline" onclick="exportCSV()">📥 Exportar Lista</button>
+            <button class="btn btn-danger" onclick="resetToInitialData()">🔄 Restaurar Lista</button>
+        </div>
+    </header>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3>Variedade de Produtos</h3>
+            <div class="number" id="total-items">0</div>
+        </div>
+        <div class="stat-card qty">
+            <h3>Total de Itens</h3>
+            <div class="number" id="total-qty">0</div>
+        </div>
+        <div class="stat-card val">
+            <h3>Valor Total em Estoque</h3>
+            <div class="number" id="total-value">R$ 0,00</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <input type="text" id="search" placeholder="🔍 Pesquisar por nome do produto..." oninput="filterTable()">
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Nome do Produto</th>
+                    <th>Quantidade</th>
+                    <th>Valor Unit. (R$)</th>
+                    <th>Valor Total (R$)</th>
+                    <th>Entrada / Saída</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="inventory-table-body">
+                </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal" id="product-modal">
+    <div class="modal-content">
+        <h2 id="modal-title">Adicionar Novo Produto</h2>
+        <form id="product-form" onsubmit="saveProduct(event)" style="margin-top: 15px;">
+            <input type="hidden" id="p-id">
+            
+            <div class="form-group">
+                <label>Nome do Produto *</label>
+                <input type="text" id="p-desc" required>
+            </div>
+            
+            <div class="form-group" style="display: flex; gap: 10px;">
+                <div style="flex: 1;">
+                    <label>Quantidade *</label>
+                    <input type="number" id="p-qty" min="0" value="1" required>
+                </div>
+                <div style="flex: 1;">
+                    <label>Valor Unitário (R$)</label>
+                    <input type="number" id="p-unit" step="0.01" min="0" value="0.00">
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+const initialData = [
+    { id: 1, desc: "Cabo microfone (P10 mono p/ Cannon fêmea 5 metros", quant: 1, valor_unit: 0 },
+    { id: 2, desc: "Cabos", quant: 3, valor_unit: 0 },
+    { id: 3, desc: "Cabos Óptica/Audio", quant: 5, valor_unit: 0 },
+    { id: 4, desc: "Cabo USB/USB", quant: 2, valor_unit: 0 },
+    { id: 5, desc: "Cabo HMDI 2.0 (5 metros) 24 K", quant: 1, valor_unit: 0 },
+    { id: 6, desc: "Cabo HDMI - VGA/DVI / HDTV LSB 2.0 (3 metros)", quant: 1, valor_unit: 0 },
+    { id: 7, desc: "GVA/HDMI", quant: 2, valor_unit: 0 },
+    { id: 8, desc: "Conversores HDMI/VGA", quant: 3, valor_unit: 0 },
+    { id: 9, desc: "Cabos HDMI 2.0 (suporte HDR/19 Pinos)", quant: 5, valor_unit: 0 },
+    { id: 10, desc: "Cabos de audio P2 p/ P2 (3metros)", quant: 2, valor_unit: 0 },
+    { id: 11, desc: "Bolsas de papelão de presente", quant: 29, valor_unit: 0 },
+    { id: 12, desc: "Velas decorativas", quant: 12, valor_unit: 0 },
+    { id: 13, desc: "Caixa de presente Pulseira", quant: 10, valor_unit: 0 },
+    { id: 14, desc: "Caixa de presente Cordão", quant: 10, valor_unit: 0 },
+    { id: 15, desc: "Caixinhas de coração", quant: 12, valor_unit: 0 },
+    { id: 16, desc: "Copo Térmico Café", quant: 3, valor_unit: 0 },
+    { id: 17, desc: "Copo Zest For Life", quant: 2, valor_unit: 0 },
+    { id: 18, desc: "Kit torcedor Brasil", quant: 6, valor_unit: 0 },
+    { id: 19, desc: "Kit teclado", quant: 1, valor_unit: 0 },
+    { id: 20, desc: "Retroprojetor", quant: 2, valor_unit: 0 },
+    { id: 21, desc: "Humidificador", quant: 2, valor_unit: 0 },
+    { id: 22, desc: "Microfone c/ fio", quant: 2, valor_unit: 0 },
+    { id: 23, desc: "Microfone s/ fio duplo", quant: 1, valor_unit: 0 },
+    { id: 24, desc: "Teclado Bluetooth 176 C", quant: 4, valor_unit: 0 },
+    { id: 25, desc: "Irrigador Bucal", quant: 3, valor_unit: 0 },
+    { id: 26, desc: "Guarda Chuva", quant: 5, valor_unit: 0 },
+    { id: 27, desc: "Controle para jogos KAP 360", quant: 3, valor_unit: 0 },
+    { id: 28, desc: "Adaptador Notebook Power BOA-sy 08", quant: 3, valor_unit: 0 },
+    { id: 29, desc: "Caixa de Som KA -530", quant: 3, valor_unit: 0 },
+    { id: 30, desc: "Cola Tek-bond", quant: 5, valor_unit: 0 },
+    { id: 31, desc: "Acendedor para fogão", quant: 3, valor_unit: 0 },
+    { id: 32, desc: "Controle para jogos PS4 YRQ-120", quant: 3, valor_unit: 0 },
+    { id: 33, desc: "Teclado Ley-176", quant: 1, valor_unit: 0 },
+    { id: 34, desc: "Teclado Gamer", quant: 1, valor_unit: 0 },
+    { id: 35, desc: "Repetidor Wi-Fi", quant: 3, valor_unit: 0 },
+    { id: 36, desc: "Controle Ps4", quant: 3, valor_unit: 0 },
+    { id: 37, desc: "Controle X-box", quant: 3, valor_unit: 0 },
+    { id: 38, desc: "Projetor", quant: 1, valor_unit: 0 },
+    { id: 39, desc: "Kit Teclado Ley-16 A", quant: 1, valor_unit: 0 },
+    { id: 40, desc: "Alfacell Bateria 2032 cartela", quant: 4, valor_unit: 0 },
+    { id: 41, desc: "KAP-G7 controle de A", quant: 1, valor_unit: 0 },
+    { id: 42, desc: "Headset Hyper", quant: 2, valor_unit: 0 },
+    { id: 43, desc: "Fone BT JB950", quant: 4, valor_unit: 0 },
+    { id: 44, desc: "Mouse gamer USB LEY-2310", quant: 2, valor_unit: 0 },
+    { id: 45, desc: "Projetor PGT-HY320/330", quant: 2, valor_unit: 0 },
+    { id: 46, desc: "Suporte p/Moto LEY-2121", quant: 2, valor_unit: 0 },
+    { id: 47, desc: "Suporte de mesa LEY-2177", quant: 2, valor_unit: 0 },
+    { id: 48, desc: "Tomada USB p/moto AJ-SO2", quant: 2, valor_unit: 0 },
+    { id: 49, desc: "Calculadora LEY-45", quant: 2, valor_unit: 0 },
+    { id: 50, desc: "Kit Teclado/Mouse LEY 45", quant: 2, valor_unit: 0 },
+    { id: 51, desc: "pelicula 3D", quant: 70, valor_unit: 0 },
+    { id: 52, desc: "pelicula 3D lançamento", quant: 52, valor_unit: 0 },
+    { id: 53, desc: "carregador tipo-c", quant: 5, valor_unit: 0 },
+    { id: 54, desc: "carregador gold tipo-c", quant: 8, valor_unit: 0 },
+    { id: 55, desc: "carregador iphone", quant: 2, valor_unit: 0 },
+    { id: 56, desc: "cabo gold tipo c", quant: 5, valor_unit: 0 },
+    { id: 57, desc: "game stick", quant: 1, valor_unit: 0 },
+    { id: 58, desc: "cabo de rede 5 metros", quant: 3, valor_unit: 0 },
+    { id: 59, desc: "cabo de rede 10 metros", quant: 4, valor_unit: 0 }
+    /*
+    { id: 59, desc: "cabo de rede 10 metros", quant: 4, valor_unit: 0 }
+    { id: 59, desc: "cabo de rede 10 metros", quant: 4, valor_unit: 0 }
+    { id: 59, desc: "cabo de rede 10 metros", quant: 4, valor_unit: 0 }
+    { id: 59, desc: "cabo de rede 10 metros", quant: 4, valor_unit: 0 }
+    { id: 59, desc: "cabo de rede 10 metros", quant: 4, valor_unit: 0 }
+    { id: 59, desc: "cabo de rede 10 metros", quant: 4, valor_unit: 0 }
+    { id: 59, desc: "cabo de rede 10 metros", quant: 4, valor_unit: 0 }
+    { id: 59, desc: "cabo de rede 10 metros", quant: 4, valor_unit: 0 }
+    */
+];
+
+let inventory = [];
+
+function loadData() {
+    const saved = localStorage.getItem('estoque_editavel_db');
+    if (saved) {
+        inventory = JSON.parse(saved);
+    } else {
+        inventory = [...initialData];
+        saveToLocalStorage();
+    }
+    renderTable();
+}
+
+function saveToLocalStorage() {
+    localStorage.setItem('estoque_editavel_db', JSON.stringify(inventory));
+    updateStats();
+}
+
+function renderTable() {
+    const tbody = document.getElementById('inventory-table-body');
+    tbody.innerHTML = '';
+
+    const filterSearch = document.getElementById('search').value.toLowerCase();
+
+    const filtered = inventory.filter(item => item.desc.toLowerCase().includes(filterSearch));
+
+    filtered.forEach(item => {
+        const unitVal = parseFloat(item.valor_unit || 0);
+        const totalVal = item.quant * unitVal;
+        
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><strong>${item.desc}</strong></td>
+            <td><span class="badge ${item.quant === 0 ? 'badge-zero' : ''}">${item.quant} un</span></td>
+            <td>R$ ${unitVal.toFixed(2)}</td>
+            <td><strong>R$ ${totalVal.toFixed(2)}</strong></td>
+            <td>
+                <div class="actions">
+                    <button class="btn btn-sm btn-add" onclick="changeQty(${item.id}, 1)">+ Entrada</button>
+                    <button class="btn btn-sm btn-sub" onclick="changeQty(${item.id}, -1)">- Saída</button>
+                </div>
+            </td>
+            <td>
+                <div class="actions">
+                    <button class="btn btn-sm btn-edit" onclick="openEditModal(${item.id})">✏️ Editar</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteProduct(${item.id})">🗑️</button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    updateStats();
+}
+
+function changeQty(id, change) {
+    const item = inventory.find(i => i.id === id);
+    if (item) {
+        if (item.quant + change < 0) {
+            alert('A quantidade não pode ser menor que zero!');
+            return;
+        }
+        item.quant += change;
+        saveToLocalStorage();
+        renderTable();
+    }
+}
+
+function openModal() {
+    document.getElementById('modal-title').innerText = "Adicionar Novo Produto";
+    document.getElementById('p-id').value = "";
+    document.getElementById('p-desc').value = "";
+    document.getElementById('p-qty').value = "1";
+    document.getElementById('p-unit').value = "0.00";
+    document.getElementById('product-modal').style.display = 'flex';
+}
+
+function openEditModal(id) {
+    const item = inventory.find(i => i.id === id);
+    if (item) {
+        document.getElementById('modal-title').innerText = "Editar Produto";
+        document.getElementById('p-id').value = item.id;
+        document.getElementById('p-desc').value = item.desc;
+        document.getElementById('p-qty').value = item.quant;
+        document.getElementById('p-unit').value = item.valor_unit || 0;
+        document.getElementById('product-modal').style.display = 'flex';
+    }
+}
+
+function closeModal() {
+    document.getElementById('product-modal').style.display = 'none';
+    document.getElementById('product-form').reset();
+}
+
+function saveProduct(e) {
+    e.preventDefault();
+    const id = document.getElementById('p-id').value;
+    const desc = document.getElementById('p-desc').value;
+    const quant = parseInt(document.getElementById('p-qty').value);
+    const valor_unit = parseFloat(document.getElementById('p-unit').value) || 0;
+
+    if (id) {
+        // Editar existente
+        const item = inventory.find(i => i.id == id);
+        if (item) {
+            item.desc = desc;
+            item.quant = quant;
+            item.valor_unit = valor_unit;
+        }
+    } else {
+        // Criar novo
+        const newProduct = {
+            id: Date.now(),
+            desc: desc,
+            quant: quant,
+            valor_unit: valor_unit
+        };
+        inventory.unshift(newProduct);
+    }
+
+    saveToLocalStorage();
+    renderTable();
+    closeModal();
+}
+
+function deleteProduct(id) {
+    if (confirm('Tem certeza que deseja remover este produto?')) {
+        inventory = inventory.filter(i => i.id !== id);
+        saveToLocalStorage();
+        renderTable();
+    }
+}
+
+function updateStats() {
+    document.getElementById('total-items').innerText = inventory.length;
+    const totalQty = inventory.reduce((acc, curr) => acc + curr.quant, 0);
+    document.getElementById('total-qty').innerText = totalQty;
+    
+    const totalVal = inventory.reduce((acc, curr) => acc + (curr.quant * (curr.valor_unit || 0)), 0);
+    document.getElementById('total-value').innerText = `R$ ${totalVal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+}
+
+function filterTable() {
+    renderTable();
+}
+
+function resetToInitialData() {
+    if (confirm('Deseja redefinir para a lista padrão? (Valores preenchidos serão perdidos)')) {
+        localStorage.removeItem('estoque_editavel_db');
+        loadData();
+    }
+}
+
+function exportCSV() {
+    let csv = 'Produto,Quantidade,ValorUnitario,ValorTotal\n';
+    inventory.forEach(item => {
+        const u = item.valor_unit || 0;
+        csv += `"${item.desc.replace(/"/g, '""')}",${item.quant},${u},${(item.quant*u).toFixed(2)}\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `estoque_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+}
+
+loadData();
+</script>
+</body>
+</html>
